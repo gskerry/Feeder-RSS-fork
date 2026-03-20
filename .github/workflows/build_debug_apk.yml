@@ -2,7 +2,7 @@ name: Build Debug APK
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ "master", "swipe-save" ]
   workflow_dispatch:
 
 jobs:
