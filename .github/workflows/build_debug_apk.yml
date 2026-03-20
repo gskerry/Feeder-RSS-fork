@@ -1,8 +1,8 @@
 name: Build Debug APK
 
 on:
-  push:
-    branches: [ "master", "swipe-save" ]
+#  push:
+#    branches: [ "master", "swipe-save" ]
   workflow_dispatch:
 
 jobs:
