@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
@@ -56,7 +58,9 @@ import com.nononsenseapps.feeder.ui.compose.feedarticle.FeedListFilter
 import com.nononsenseapps.feeder.ui.compose.feedarticle.onlyUnread
 import com.nononsenseapps.feeder.ui.compose.theme.LocalDimens
 import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToReadColor
+import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToSaveColor
 import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToUnreadColor
+import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToUnsaveColor
 import com.nononsenseapps.feeder.ui.compose.utils.isCompactLandscape
 import com.nononsenseapps.feeder.util.logDebug
 import kotlinx.coroutines.launch
@@ -99,8 +103,12 @@ fun SwipeableFeedItemPreview(
     val color by animateColorAsState(
         targetValue =
             when {
-                item.unread || filter.onlyUnread -> SwipingItemToReadColor
-                else -> SwipingItemToUnreadColor
+                anchoredDraggableState.offset > 0 -> {
+                    if (item.bookmarked) SwipingItemToUnsaveColor else SwipingItemToSaveColor
+                }
+                else -> {
+                    if (item.unread || filter.onlyUnread) SwipingItemToReadColor else SwipingItemToUnreadColor
+                }
             },
         label = "swipeBackground",
     )
@@ -114,14 +122,19 @@ fun SwipeableFeedItemPreview(
 
     var skipHapticFeedback by remember { mutableStateOf(false) }
     LaunchedEffect(anchoredDraggableState.settledValue) {
-        if (anchoredDraggableState.settledValue != FeedItemSwipeState.CENTER) {
+        val settledValue = anchoredDraggableState.settledValue
+        if (settledValue != FeedItemSwipeState.CENTER) {
             logDebug(LOG_TAG, "onSwipe ${item.unread}")
-            if (!filter.onlyUnread) {
+            if (settledValue == FeedItemSwipeState.END || !filter.onlyUnread) {
                 skipHapticFeedback = true
                 anchoredDraggableState.animateTo(FeedItemSwipeState.CENTER)
             }
 
-            onSwipeCallback(item.unread)
+            if (settledValue == FeedItemSwipeState.END) {
+                onToggleBookmark()
+            } else {
+                onSwipeCallback(item.unread)
+            }
         }
     }
 
@@ -264,9 +277,13 @@ fun SwipeableFeedItemPreview(
                     }.padding(horizontal = 24.dp),
         ) {
             Icon(
-                when (item.unread) {
-                    true -> Icons.Default.VisibilityOff
-                    false -> Icons.Default.Visibility
+                when {
+                    anchoredDraggableState.offset > 0 -> {
+                        if (item.bookmarked) Icons.Default.Star else Icons.Default.StarBorder
+                    }
+                    else -> {
+                        if (item.unread) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                    }
                 },
                 contentDescription = null,
             )
