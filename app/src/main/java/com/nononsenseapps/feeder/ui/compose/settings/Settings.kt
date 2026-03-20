@@ -616,16 +616,14 @@ fun SettingsList(
                 onCheckedChange = onShowOnlyTitle,
             )
 
-            MenuSetting(
-                title = stringResource(id = R.string.swipe_to_mark_as_read),
-                currentValue = swipeAsReadValue.asSwipeAsReadOption(),
-                values = ImmutableHolder(SwipeAsRead.entries.map { it.asSwipeAsReadOption() }),
-                onSelection = {
-                    onSwipeAsReadOptionChange(it.swipeAsRead)
+            SwitchSetting(
+                title = stringResource(id = R.string.enable_swipe_gestures),
+                checked = swipeAsReadValue != SwipeAsRead.DISABLED,
+                onCheckedChange = { isEnabled ->
+                    onSwipeAsReadOptionChange(
+                        if (isEnabled) SwipeAsRead.FROM_ANYWHERE else SwipeAsRead.DISABLED
+                    )
                 },
-                modifier =
-                    Modifier
-                        .width(dimens.maxContentWidth),
             )
 
             SwitchSetting(

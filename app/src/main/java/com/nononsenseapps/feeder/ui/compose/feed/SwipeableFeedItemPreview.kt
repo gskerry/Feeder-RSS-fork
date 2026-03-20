@@ -420,60 +420,35 @@ fun SwipeableFeedItemPreview(
         // This box handles swiping - it uses padding to allow the nav drawer to still be dragged
         // It's very important that clickable stuff is handled by its parent - or a direct child
         // Wrapped in an outer box to get the height set properly
-        if (swipeAsRead != SwipeAsRead.DISABLED) {
+        Box(
+            modifier =
+                Modifier
+                    .matchParentSize(),
+        ) {
             Box(
                 modifier =
                     Modifier
-                        .matchParentSize(),
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .run {
-                                @Suppress("KotlinConstantConditions")
-                                when (swipeAsRead) {
-                                    // This never actually gets called due to outer if
-                                    SwipeAsRead.DISABLED ->
-                                        this
-                                            .height(0.dp)
-                                            .width(0.dp)
+                        .padding(start = 48.dp)
+                        .matchParentSize()
+                        .anchoredDraggable(
+                            state = anchoredDraggableState,
+                            orientation = Orientation.Horizontal,
+                            reverseDirection = isRtl,
+                            enabled = swipeEnabled,
+                        ),
+            )
 
-                                    SwipeAsRead.ONLY_FROM_END -> {
-                                        this
-                                            .fillMaxHeight()
-                                            .width(this@BoxWithConstraints.maxWidth / 4)
-                                            .align(Alignment.CenterEnd)
-                                    }
-
-                                    SwipeAsRead.FROM_ANYWHERE -> {
-                                        this
-                                            .padding(start = 48.dp)
-                                            .matchParentSize()
-                                    }
-                                }
-                            }.anchoredDraggable(
-                                state = anchoredDraggableState,
-                                orientation = Orientation.Horizontal,
-                                reverseDirection = isRtl,
-                                enabled = swipeEnabled,
-                            ),
+            // Dividing the maxWidth by 2 means you only have to swipe a quarter of the screen width to reach the swipe threshold, instead of a full half of the screen by default.
+            LaunchedEffect(swipeAsRead) {
+                anchoredDraggableState.updateAnchors(
+                    DraggableAnchors {
+                        if (swipeAsRead != SwipeAsRead.DISABLED) {
+                            FeedItemSwipeState.START at -(maxWidthPx / 2)
+                        }
+                        FeedItemSwipeState.CENTER at 0f
+                        FeedItemSwipeState.END at maxWidthPx / 2
+                    },
                 )
-
-                // Dividing the maxWidth by 2 means you only have to swipe a quarter of the screen width to reach the swipe threshold, instead of a full half of the screen by default.
-                LaunchedEffect(swipeAsRead) {
-                    anchoredDraggableState.updateAnchors(
-                        DraggableAnchors {
-                            if (swipeAsRead == SwipeAsRead.ONLY_FROM_END) {
-                                FeedItemSwipeState.START at -(maxWidthPx / 2)
-                                FeedItemSwipeState.CENTER at 0f
-                            } else if (swipeAsRead == SwipeAsRead.FROM_ANYWHERE) {
-                                FeedItemSwipeState.START at -(maxWidthPx / 2)
-                                FeedItemSwipeState.CENTER at 0f
-                                FeedItemSwipeState.END at maxWidthPx / 2
-                            }
-                        },
-                    )
-                }
             }
         }
     }
