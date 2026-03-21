@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
@@ -56,7 +58,9 @@ import com.nononsenseapps.feeder.ui.compose.feedarticle.FeedListFilter
 import com.nononsenseapps.feeder.ui.compose.feedarticle.onlyUnread
 import com.nononsenseapps.feeder.ui.compose.theme.LocalDimens
 import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToReadColor
+import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToSaveColor
 import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToUnreadColor
+import com.nononsenseapps.feeder.ui.compose.theme.SwipingItemToUnsaveColor
 import com.nononsenseapps.feeder.ui.compose.utils.isCompactLandscape
 import com.nononsenseapps.feeder.util.logDebug
 import kotlinx.coroutines.launch
@@ -99,8 +103,12 @@ fun SwipeableFeedItemPreview(
     val color by animateColorAsState(
         targetValue =
             when {
-                item.unread || filter.onlyUnread -> SwipingItemToReadColor
-                else -> SwipingItemToUnreadColor
+                anchoredDraggableState.offset > 0 -> {
+                    if (item.bookmarked) SwipingItemToUnsaveColor else SwipingItemToSaveColor
+                }
+                else -> {
+                    if (item.unread || filter.onlyUnread) SwipingItemToReadColor else SwipingItemToUnreadColor
+                }
             },
         label = "swipeBackground",
     )
@@ -114,14 +122,19 @@ fun SwipeableFeedItemPreview(
 
     var skipHapticFeedback by remember { mutableStateOf(false) }
     LaunchedEffect(anchoredDraggableState.settledValue) {
-        if (anchoredDraggableState.settledValue != FeedItemSwipeState.CENTER) {
+        val settledValue = anchoredDraggableState.settledValue
+        if (settledValue != FeedItemSwipeState.CENTER) {
             logDebug(LOG_TAG, "onSwipe ${item.unread}")
-            if (!filter.onlyUnread) {
+            if (settledValue == FeedItemSwipeState.END || !filter.onlyUnread) {
                 skipHapticFeedback = true
                 anchoredDraggableState.animateTo(FeedItemSwipeState.CENTER)
             }
 
-            onSwipeCallback(item.unread)
+            if (settledValue == FeedItemSwipeState.END) {
+                onToggleBookmark()
+            } else {
+                onSwipeCallback(item.unread)
+            }
         }
     }
 
@@ -264,9 +277,13 @@ fun SwipeableFeedItemPreview(
                     }.padding(horizontal = 24.dp),
         ) {
             Icon(
-                when (item.unread) {
-                    true -> Icons.Default.VisibilityOff
-                    false -> Icons.Default.Visibility
+                when {
+                    anchoredDraggableState.offset > 0 -> {
+                        if (item.bookmarked) Icons.Default.Star else Icons.Default.StarBorder
+                    }
+                    else -> {
+                        if (item.unread) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                    }
                 },
                 contentDescription = null,
             )
@@ -403,60 +420,35 @@ fun SwipeableFeedItemPreview(
         // This box handles swiping - it uses padding to allow the nav drawer to still be dragged
         // It's very important that clickable stuff is handled by its parent - or a direct child
         // Wrapped in an outer box to get the height set properly
-        if (swipeAsRead != SwipeAsRead.DISABLED) {
+        Box(
+            modifier =
+                Modifier
+                    .matchParentSize(),
+        ) {
             Box(
                 modifier =
                     Modifier
-                        .matchParentSize(),
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .run {
-                                @Suppress("KotlinConstantConditions")
-                                when (swipeAsRead) {
-                                    // This never actually gets called due to outer if
-                                    SwipeAsRead.DISABLED ->
-                                        this
-                                            .height(0.dp)
-                                            .width(0.dp)
+                        .padding(start = 48.dp)
+                        .matchParentSize()
+                        .anchoredDraggable(
+                            state = anchoredDraggableState,
+                            orientation = Orientation.Horizontal,
+                            reverseDirection = isRtl,
+                            enabled = swipeEnabled,
+                        ),
+            )
 
-                                    SwipeAsRead.ONLY_FROM_END -> {
-                                        this
-                                            .fillMaxHeight()
-                                            .width(this@BoxWithConstraints.maxWidth / 4)
-                                            .align(Alignment.CenterEnd)
-                                    }
-
-                                    SwipeAsRead.FROM_ANYWHERE -> {
-                                        this
-                                            .padding(start = 48.dp)
-                                            .matchParentSize()
-                                    }
-                                }
-                            }.anchoredDraggable(
-                                state = anchoredDraggableState,
-                                orientation = Orientation.Horizontal,
-                                reverseDirection = isRtl,
-                                enabled = swipeEnabled,
-                            ),
+            // Dividing the maxWidth by 2 means you only have to swipe a quarter of the screen width to reach the swipe threshold, instead of a full half of the screen by default.
+            LaunchedEffect(swipeAsRead) {
+                anchoredDraggableState.updateAnchors(
+                    DraggableAnchors {
+                        if (swipeAsRead != SwipeAsRead.DISABLED) {
+                            FeedItemSwipeState.START at -(maxWidthPx / 2)
+                        }
+                        FeedItemSwipeState.CENTER at 0f
+                        FeedItemSwipeState.END at maxWidthPx / 2
+                    },
                 )
-
-                // Dividing the maxWidth by 2 means you only have to swipe a quarter of the screen width to reach the swipe threshold, instead of a full half of the screen by default.
-                LaunchedEffect(swipeAsRead) {
-                    anchoredDraggableState.updateAnchors(
-                        DraggableAnchors {
-                            if (swipeAsRead == SwipeAsRead.ONLY_FROM_END) {
-                                FeedItemSwipeState.START at -(maxWidthPx / 2)
-                                FeedItemSwipeState.CENTER at 0f
-                            } else if (swipeAsRead == SwipeAsRead.FROM_ANYWHERE) {
-                                FeedItemSwipeState.START at -(maxWidthPx / 2)
-                                FeedItemSwipeState.CENTER at 0f
-                                FeedItemSwipeState.END at maxWidthPx / 2
-                            }
-                        },
-                    )
-                }
             }
         }
     }
