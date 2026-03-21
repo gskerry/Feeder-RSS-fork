@@ -22,3 +22,4 @@ Then build and install the app to your phone which is connected via USB:
 ### (Fork) WIP Features
 
 * Swipe gesture to add article to saved/starred
+* Fix Feed MaxCount to respect app limit setting (👈 you are here)
