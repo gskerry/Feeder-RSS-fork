@@ -294,7 +294,8 @@ class RssLocalSync(
                         FetchError(url = url.toString(), throwable = t)
                     },
                 ) {
-                    val items = feed.items
+                    // Take only up to maxFeedItemCount items, ignoring the rest to save processing and DB space
+                    val items = feed.items?.take(maxFeedItemCount)
                     val uniqueIdCount = items?.map { it.id }?.toSet()?.size
                     // This can only detect between items present in one feed. See NIXOS
                     val isNotUniqueIds = uniqueIdCount != items?.size
@@ -408,7 +409,7 @@ class RssLocalSync(
                         repository
                             .getItemsToBeCleanedFromFeed(
                                 feedId = feedSql.id,
-                                keepCount = max(maxFeedItemCount, items?.size ?: 0),
+                                keepCount = maxFeedItemCount,
                             ).filterNot { id ->
                                 // Don't delete articles that are present in feed or currently selected
                                 id in presentIds || id == repository.currentArticleId.value
