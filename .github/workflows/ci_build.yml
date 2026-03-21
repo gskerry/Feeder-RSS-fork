@@ -1,12 +1,13 @@
 name: Continuous Integration
 
 on:
-  push:
-    tags:
-      - '*'
-    branches:
-      - master
-  pull_request:
+#  push:
+#    tags:
+#      - '*'
+#    branches:
+#      - master
+#  pull_request:
+  workflow_dispatch:
 
 jobs:
   ktlint:
